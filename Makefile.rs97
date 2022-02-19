@@ -12,10 +12,10 @@ SPU  = spu_pcsxrearmed
 RECOMPILER = mips
 
 RM  = rm -f
-MD  = mkdir
-CC  = /opt/rs97-toolchain/bin/mipsel-linux-gcc
-CXX = /opt/rs97-toolchain/bin/mipsel-linux-g++
-LD  = /opt/rs97-toolchain/bin/mipsel-linux-g++
+MD  = mkdir -p
+CC  = $(TC)gcc
+CXX = $(TC)g++
+LD  = $(TC)g++
 
 SYSROOT    := $(shell $(CC) --print-sysroot)
 SDL_CONFIG := $(SYSROOT)/usr/bin/sdl-config
@@ -24,7 +24,7 @@ SDL_LIBS   := $(shell $(SDL_CONFIG) --libs)
 
 
 C_ARCH = -mips32 -DDYNAREC_SKIP_DCACHE_FLUSH -DTMPFS_MIRRORING -DTMPFS_DIR=\"/tmp\"
-OPTS = -O2 -mno-fp-exceptions -mframe-header-opt -mno-check-zero-division -fno-signed-zeros -fno-trapping-math -mno-interlink-compressed -fno-caller-saves -flto=8
+OPTS = -O2 -finline-limit=42 -fno-unroll-loops -fno-ipa-cp -ffast-math -flto -fipa-pta
 
 CFLAGS = $(C_ARCH) -fno-common -mno-abicalls -fno-PIC -fdata-sections -ffunction-sections $(OPTS) -DGCW_ZERO \
 	-Wall -Wunused -Wpointer-arith \
@@ -48,7 +48,7 @@ endif
 
 CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti -nostdinc++ 
 
-LDFLAGS = -nodefaultlibs -lc -lgcc -lSDL -lasound -lz -Wl,--as-needed -Wl,--gc-sections -flto -s
+LDFLAGS = -nodefaultlibs -lc -lgcc -lSDL -lasound -lz -Wl,--as-needed -Wl,--gc-sections $(OPTS) -s
 
 OBJDIRS = obj obj/gpu obj/gpu/$(GPU) obj/spu obj/spu/$(SPU) \
 	  obj/recompiler obj/recompiler/$(RECOMPILER) \
@@ -99,6 +99,18 @@ OBJS += obj/spu/$(SPU)/spu.o
 OBJS += obj/port/$(PORT)/port.o
 
 OBJS += obj/plugin_lib/perfmon.o
+
+ifeq ($(SUPPORT_CHD),1)
+OBJDIRS += obj/libchdr obj/libchdr/deps/lzma-19.00/src obj/libchdr/src
+CFLAGS += -DHAVE_CHD -D_7ZIP_ST -Isrc/libchdr/include/libchdr -Isrc/libchdr/include/dr_libs -Isrc/libchdr/include -Isrc/libchdr/deps/lzma-19.00/include
+OBJS += obj/libchdr/src/libchdr_bitstream.o
+OBJS += obj/libchdr/src/libchdr_cdrom.o
+OBJS += obj/libchdr/src/libchdr_chd.o
+OBJS += obj/libchdr/src/libchdr_flac.o
+OBJS += obj/libchdr/src/libchdr_huffman.o
+OBJS += obj/libchdr/deps/lzma-19.00/src/Alloc.o obj/libchdr/deps/lzma-19.00/src/Bra86.o obj/libchdr/deps/lzma-19.00/src/BraIA64.o obj/libchdr/deps/lzma-19.00/src/CpuArch.o obj/libchdr/deps/lzma-19.00/src/Delta.o
+OBJS += obj/libchdr/deps/lzma-19.00/src/LzFind.o obj/libchdr/deps/lzma-19.00/src/Lzma86Dec.o obj/libchdr/deps/lzma-19.00/src/LzmaDec.o obj/libchdr/deps/lzma-19.00/src/LzmaEnc.o obj/libchdr/deps/lzma-19.00/src/Sort.o
+endif
 
 #******************************************
 # spu_pcsxrearmed section BEGIN
